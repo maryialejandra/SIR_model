@@ -1,0 +1,262 @@
+import numpy as np
+import pandas as pd
+from scipy.integrate import odeint
+import matplotlib.pyplot as mplt
+
+def Euler(xn,yn,h,MyF,arg):
+    return yn+(h*MyF(yn,xn,*arg))
+def MyFirstODE(y,x):
+    return x-y
+def ExactSolution(x):
+    return x-1+2*np.exp(-x)
+def RungeKuta4(xn,yn,h,g,arg):
+    k1=h*g(yn,xn,*arg)
+    k2=h*g(yn+h*k1/2,xn+h/2,*arg)
+    k3=h*g(yn+h*k2/2,xn+h/2,*arg)
+    k4=h*g(yn+h*k3,xn+h,*arg)
+    return yn +(k1+2*k2+2*k3+k4)/6
+
+NumPuntos=np.array([11,101,1001,10001])
+x0=0.
+xf=5.
+y0=1.
+h=(xf-x0)/NumPuntos
+
+y1_difference=[]
+yE_difference=[]
+yRK4_difference=[]
+#for j in NumPuntos:
+#    EulerSolutions=[]
+#    RK4Solutions=[]
+#    xs=np.linspace(x0,xf,j)
+#    EulerSolutions.append(y0)
+#    RK4Solutions.append(y0)
+#    for i in xs[1:]:
+#        CurrentSolution1=Euler(i,EulerSolutions[-1],((xf-x0)/j),MyFirstODE)
+#        CurrentSolution2=RungeKuta4(i,RK4Solutions[-1],((xf-x0)/j),MyFirstODE)
+#        EulerSolutions.append(CurrentSolution1)
+#        RK4Solutions.append(CurrentSolution2)
+#    ys=odeint(MyFirstODE,y0,xs)
+#    ys=np.array(ys).flatten()
+#    y_exact=ExactSolution(xs)
+#    y1_difference.append(np.mean(np.abs(ys-y_exact)))
+#    yE_difference.append(np.mean(np.abs(y_exact-EulerSolutions)))
+#    yRK4_difference.append(np.mean(np.abs(y_exact-RK4Solutions)))
+
+    
+
+#mplt.plot(xs,ys,'r', label='Scipy')
+#mplt.plot(xs,EulerSolutions,'b', label='Euler')
+#
+#mplt.plot(xs,RK4Solutions, label='RK4')
+#mplt.plot(xs,y_exact,'g--',label='Real')
+#mplt.legend()
+#mplt.grid()
+#mplt.xlabel('x')
+#mplt.ylabel('y')
+#mplt.show()
+##IMplementando SIR
+def SIR(y, t, N, beta, gamma):
+    S, I, R = y
+    dSdt = -beta * S * I / N
+    dIdt = beta * S * I / N - gamma * I   # 1/(persona/dia)
+    dRdt = gamma * I
+    return np.array([dSdt, dIdt, dRdt])
+def SIR2(y, t):
+    S, I, R = y
+    dSdt = -0.3 * S * I / 100
+    dIdt = 0.3 * S * I / 100 - 0.2 * I   # 1/(persona/dia)
+    dRdt = 0.2 * I
+    return np.array([dSdt, dIdt, dRdt])
+S0=99
+I0=1
+R0=0
+y0 = S0, I0, R0
+
+xf=100
+x0=0
+h=(xf-x0)/1000
+x=np.linspace(x0,xf,1000)
+N=100
+beta=0.5
+gamma=0.1
+ret = odeint(SIR, y0, x,args=(N,beta,gamma))
+Ssp, Isp, Rsp = ret.T
+
+
+e=[]
+e.append(y0)
+rk4=[]
+rk4.append(y0)
+
+for i in x:
+    e.append(np.array(Euler(x,e[-1],h,SIR,[N,beta,gamma])))
+    rk4.append(np.array(RungeKuta4(x,rk4[-1],h,SIR,[N,beta,gamma])))
+Seul=[]
+Ieul=[] 
+Reul=[]
+Srk4=[]
+Irk4=[]
+Rrk4=[]
+
+for i in range(1,len(e)):
+    Seul.append(e[i][0])
+    Ieul.append(e[i][1])
+    Reul.append(e[i][2])
+    Srk4.append(rk4[i][0])
+    Irk4.append(rk4[i][1])
+    Rrk4.append(rk4[i][2])
+mplt.plot(x,Isp, label='Scipy')
+mplt.plot(x,Ieul, label='Euler')
+mplt.plot(x,Irk4, label='RK4')
+
+mplt.legend()
+mplt.grid()
+mplt.show()
+
+
+##Convergence
+
+##Using scipy as approximation for exact solution
+
+def convergence(y_exact,y_est):
+    l=np.absolute(y_exact-y_est)
+    return l
+mplt.plot(x,convergence(Isp,Ieul),label='Euler')
+mplt.plot(x,convergence(Isp,Irk4),label='RK4')
+mplt.grid()
+mplt.legend()
+mplt.xlabel('t')
+mplt.ylabel('Error')
+mplt.savefig('convergence.png')
+mplt.show()
+##Determinemos sensibilidad a las condicione
+gamma=0.5
+betar=np.arange(0.1,0.9,0.1)
+gammar=np.arange(0.1,0.9,0.1)
+
+def getting_variables(e):
+    S=[]
+    I=[] 
+    R=[]
+    for k in range(1,len(e)):
+        S.append(e[k][0])
+        I.append(e[k][1])
+        R.append(e[k][2])
+    return S, I, R
+for j in betar:
+    e=[]
+    e.append(y0)
+    rk4=[]
+    rk4.append(y0)
+
+    for i in x:
+        e.append(np.array(Euler(x,e[-1],h,SIR,[N,j,0.1])))
+        rk4.append(np.array(RungeKuta4(x,rk4[-1],h,SIR,[N,j,0.1])))
+        
+    Seul,Ieul,Reul=getting_variables(e)
+    Srk4,Irk4,Rrk4=getting_variables(rk4)
+    mplt.plot(x,Ieul, label=r'$\beta=$'+str(j))
+    #mplt.plot(x,Seul, label='beta='+str(j))
+mplt.legend()
+mplt.grid()
+mplt.savefig('Betas_dependecy.png')
+mplt.show()
+
+data_conf=pd.read_csv('COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv')
+data_d=pd.read_csv('COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv')
+data_R=pd.read_csv('COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv')
+
+def dat(data_conf):
+    data_conf=data_conf[data_conf['Country/Region']=='China']                 
+    data_conf=data_conf[data_conf['Province/State']=='Hubei'] ##Se filtra solo la provincia de Hubei
+    H_conf=data_conf.values[0][4:] ##Se toman los casos confirmados 
+    return H_conf
+H_conf=dat(data_conf)
+H_d=dat(data_d)
+H_R=dat(data_R)
+
+H_activos=H_conf-(H_d+H_R)
+H_out=H_d+H_R
+def chi2(data,fit):
+    d=np.abs((data-fit)**2/data)
+    return np.sum(d)
+betas=np.arange(0.0,0.8,0.01)
+omegas=np.arange(0.0,0.9,0.01)
+N1=11e6
+N=N1
+y0=[N1,H_activos[0],H_out[0]]
+x=np.arange(0,len(H_activos),1)
+#for beta in betas:
+#    for gamma in omegas:
+#        e=[]
+#        e.append(y0)
+#        rk4=[]
+#        rk4.append(y0)
+#
+#        for i in x:
+#            e.append(np.array(Euler(x,e[-1],h,SIR,[N,beta,gamma])))
+#            rk4.append(np.array(RungeKuta4(x,rk4[-1],h,SIR,[N,beta,gamma])))
+#        
+#        Seul,Ieul,Reul=getting_variables(e)
+#        Srk4,Irk4,Rrk4=getting_variables(rk4)
+#        if (beta==betas[0] and gamma==omegas[0]):
+#            chi=chi2(H_activos[:80],np.array(Ieul)[:80])
+#            parameter=[beta,gamma]
+#            I=Ieul 
+#        chi1=chi2(H_activos[:-22],np.array(Ieul)[:-22])
+#        if chi1<chi:
+#            chi=chi1
+#            parameter=[beta,gamma]
+#            I=Ieul
+#        else:
+#            pass
+#print(parameter)
+#mplt.plot(x,I,label='modelo')
+#mplt.plot(x,H_activos,label='data')
+#mplt.legend()
+#mplt.show()
+a=0.01
+n=0.6
+def SIR3(y, t, N, beta, gamma,a,n):
+    S, I, R = y
+    dSdt = -beta * S * I / (N*(a+t**n))
+    dIdt = beta * S * I / (N*(a+t**n)) - gamma * I   # 1/(persona/dia)
+    dRdt = gamma * I
+    return np.array([dSdt, dIdt, dRdt])
+a=np.arange(0,1,0.01)
+n=np.arange(0,2,0.1)
+b=np.arange(0,1,0.1)
+for i in a:
+    for j in n:
+        for k in b:
+            h_odeint=odeint(SIR3,y0,x,args=(N1,k,1/10,i,j))
+            Ssp, Isp, Rsp = h_odeint.T
+            if (i==a[0] and j==n[0] and k==b[0]):
+                chi=chi2(H_activos[:-22],np.array(Isp[:-22]))
+                parameter=[k,0.1,i,j]
+                S=Ssp
+                I=Isp
+                R=Rsp
+            chi1=chi2(H_activos[:-22],np.array(Isp[:-22]))
+            if chi1<chi:
+                chi=chi1
+                parameter=[k,0.1,i,j]
+                S=Ssp
+                I=Isp
+                R=Rsp
+            else:
+                pass
+            
+mplt.plot(x,I,label='Infectados SIR')
+mplt.plot(x,R,label='Removidos SIR')
+mplt.plot(x,H_activos,label='Infectados datos')
+mplt.plot(x,H_out,label='Removidos datos')
+mplt.legend()
+mplt.savefig('ajuste.png')
+mplt.show()
+print(parameter,chi)
+        
+
+            
+ 
